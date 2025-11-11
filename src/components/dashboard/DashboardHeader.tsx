@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, LogOut, User as UserIcon } from 'lucide-react';
+import { Bell, LogOut, User as UserIcon, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/context/AuthContext';
