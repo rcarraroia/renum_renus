@@ -9,6 +9,7 @@ import ConversationDetailPanel from '@/components/conversations/ConversationDeta
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 const AdminConversationsPage: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>(MOCK_CONVERSATIONS);
