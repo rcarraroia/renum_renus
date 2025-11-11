@@ -75,7 +75,7 @@ const NicheCard: React.FC<NicheCardProps> = ({ data, index }) => {
                 </CardContent>
                 <div className="p-6 pt-0">
                     <Button variant="link" className="p-0 h-auto text-[#4e4ea8] dark:text-[#0ca7d2] hover:text-[#FF6B35]" onClick={openChat}>
-                        Fale com Renus sobre {title} <ArrowRight className="ml-2 h-4 w-4" />
+                        Fale com Renus <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                 </div>
             </Card>
