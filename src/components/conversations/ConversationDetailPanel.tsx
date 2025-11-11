@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useAuth } from '@/context/AuthContext';
+import GuardrailMessage from './GuardrailMessage'; // Importando o novo componente
 
 interface ConversationDetailPanelProps {
   conversation: Conversation;
@@ -88,7 +89,7 @@ const GuardrailDetailsModal: React.FC<{ intervention: GuardrailIntervention | un
 };
 
 // --- Message Bubble Component ---
-const MessageBubble: React.FC<{ message: ConversationMessage, onGuardrailDetails: (intervention: GuardrailIntervention) => void }> = ({ message, onGuardrailDetails }) => {
+const MessageBubble: React.FC<{ message: ConversationMessage, onGuardrailDetails: (intervention: GuardrailIntervention) => void, onRetry: (originalMessageId: string, newContent: string) => void }> = ({ message, onGuardrailDetails, onRetry }) => {
     const isClient = message.sender === 'client';
     const isRenus = message.sender === 'renus';
     const isAdmin = message.sender === 'admin';
@@ -115,87 +116,15 @@ const MessageBubble: React.FC<{ message: ConversationMessage, onGuardrailDetails
     }
 
     if (isGuardrail && intervention) {
-        const { action, reason, originalContent, sanitizedContent } = intervention;
-        const isBlocked = action === 'blocked';
-        const isSanitized = action === 'sanitized';
-        const isWarned = action === 'warned';
-
-        let icon: React.ReactNode;
-        let colorClass: string;
-        let title: string;
-        let contentDisplay: React.ReactNode;
-
-        if (isBlocked) {
-            icon = <Lock className="h-5 w-5 text-red-500" />;
-            colorClass = 'bg-red-50 dark:bg-red-900/20 border-red-500';
-            title = 'Mensagem Bloqueada';
-            contentDisplay = (
-                <div className="space-y-2">
-                    <p className="text-sm font-medium text-red-700 dark:text-red-300">
-                        Ação: Bloqueio. Motivo: {reason}.
-                    </p>
-                    <p className="text-xs text-muted-foreground italic">
-                        Conteúdo do Cliente: {originalContent.substring(0, 50)}... (Hash: {message.id.substring(0, 8)})
-                    </p>
-                    <Button variant="link" size="sm" className="p-0 h-auto text-red-500" onClick={() => onGuardrailDetails(intervention)}>
-                        <Eye className="h-4 w-4 mr-1" /> Ver Detalhes da Intervenção
-                    </Button>
-                </div>
-            );
-        } else if (isSanitized) {
-            icon = <Shield className="h-5 w-5 text-yellow-500" />;
-            colorClass = 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500';
-            title = 'Conteúdo Sanitizado';
-            contentDisplay = (
-                <div className="space-y-2">
-                    <p className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
-                        Ação: Sanitização. Motivo: {reason}.
-                    </p>
-                    <p className="text-xs text-muted-foreground italic">
-                        Original: {originalContent.substring(0, 50)}...
-                    </p>
-                    <p className="text-sm font-mono bg-gray-100 dark:bg-gray-700 p-2 rounded mt-1">
-                        {sanitizedContent}
-                    </p>
-                    <Button variant="link" size="sm" className="p-0 h-auto text-yellow-500" onClick={() => onGuardrailDetails(intervention)}>
-                        <Eye className="h-4 w-4 mr-1" /> Ver Detalhes da Sanitização
-                    </Button>
-                </div>
-            );
-        } else if (isWarned) {
-            icon = <AlertTriangle className="h-5 w-5 text-orange-500" />;
-            colorClass = 'bg-orange-50 dark:bg-orange-900/20 border-orange-500';
-            title = 'Alerta de Guardrail';
-            contentDisplay = (
-                <div className="space-y-2">
-                    <p className="text-sm font-medium text-orange-700 dark:text-orange-300">
-                        Ação: Aviso. Motivo: {reason}.
-                    </p>
-                    <p className="text-xs text-muted-foreground italic">
-                        Mensagem do Cliente: {originalContent}
-                    </p>
-                    <Button variant="link" size="sm" className="p-0 h-auto text-orange-500">
-                        <CornerDownLeft className="h-4 w-4 mr-1" /> Ignorar e Responder
-                    </Button>
-                </div>
-            );
-        } else {
-            return null; // Should not happen
-        }
-
+        // Delegate rendering to the dedicated GuardrailMessage component
         return (
-            <div className={cn("flex w-full mb-3 justify-start")}>
-                <Card className={cn("max-w-[85%] p-3 shadow-md border-2", colorClass)}>
-                    <div className="flex items-center space-x-2 mb-2">
-                        {icon}
-                        <span className="font-bold text-sm">{title}</span>
-                    </div>
-                    <Separator className="mb-2" />
-                    {contentDisplay}
-                    <div className="text-right text-xs mt-2 opacity-70">
-                        {format(message.timestamp, 'HH:mm')}
-                    </div>
-                </Card>
+            <div className={cn("flex w-full mb-3", isClient ? 'justify-end' : 'justify-start')}>
+                <GuardrailMessage 
+                    message={message} 
+                    intervention={intervention} 
+                    onGuardrailDetails={onGuardrailDetails}
+                    onRetry={onRetry}
+                />
             </div>
         );
     }
@@ -271,6 +200,23 @@ const ConversationDetailPanel: React.FC<ConversationDetailPanelProps> = ({ conve
         }, 2000);
     }
   };
+  
+  // Handler for retrying a message after a Guardrail intervention
+  const handleRetryMessage = (originalMessageId: string, newContent: string) => {
+    // 1. Remove the original guardrail message (mocking removal)
+    // Note: In a real app, this would be handled by state management outside this component.
+    // Since we don't have a global state manager here, we'll just send the new message.
+    
+    // 2. Send the new content as a regular message
+    onSendMessage(conversation.id, newContent, false);
+    
+    // 3. Mock Renus response
+    setIsRenusTyping(true);
+    setTimeout(() => {
+        setIsRenusTyping(false);
+        onSendMessage(conversation.id, "Mensagem recebida e processada. Obrigado pela correção.", false, 'renus');
+    }, 2000);
+  };
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -342,7 +288,12 @@ const ConversationDetailPanel: React.FC<ConversationDetailPanelProps> = ({ conve
         {/* Message Timeline */}
         <div className="flex flex-col flex-grow overflow-y-auto p-4" ref={chatContentRef}>
           {conversation.messages.map(msg => (
-            <MessageBubble key={msg.id} message={msg} onGuardrailDetails={handleGuardrailDetails} />
+            <MessageBubble 
+                key={msg.id} 
+                message={msg} 
+                onGuardrailDetails={handleGuardrailDetails} 
+                onRetry={handleRetryMessage}
+            />
           ))}
           {isRenusTyping && (
             <div className="flex justify-start">
