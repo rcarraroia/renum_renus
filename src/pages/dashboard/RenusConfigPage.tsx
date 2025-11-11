@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Zap, Save, Settings, Tool, BookOpen, Clock, RefreshCw } from 'lucide-react';
+import { Zap, Save, Settings, Wrench, BookOpen, Clock, RefreshCw } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import InstructionsTab from '@/components/renus-config/InstructionsTab';
@@ -31,7 +31,7 @@ const RenusConfigPage: React.FC = () => {
 
   const tabs = [
     { value: 'instructions', label: 'Instruções', icon: Settings, component: InstructionsTab },
-    { value: 'tools', label: 'Ferramentas', icon: Tool, component: ToolsTab },
+    { value: 'tools', label: 'Ferramentas', icon: Wrench, component: ToolsTab },
     { value: 'integrations', label: 'Integrações', icon: RefreshCw, component: IntegrationsTab },
     { value: 'knowledge', label: 'Conhecimento', icon: BookOpen, component: KnowledgeTab },
     { value: 'triggers', label: 'Gatilhos', icon: Clock, component: TriggersTab },
