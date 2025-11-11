@@ -18,7 +18,8 @@ import DebugPanel from "./components/DebugPanel";
 import AdminProjectsPage from "./pages/dashboard/AdminProjectsPage";
 import AdminClientsPage from "./pages/dashboard/AdminClientsPage";
 import AdminConversationsPage from "./pages/dashboard/AdminConversationsPage";
-import AdminReportsPage from "./pages/dashboard/AdminReportsPage"; // Importando a nova página de relatórios
+import AdminReportsPage from "./pages/dashboard/AdminReportsPage";
+import AdminSettingsPage from "./pages/dashboard/AdminSettingsPage"; // Importando a nova página de configurações
 
 const queryClient = new QueryClient();
 
@@ -57,7 +58,7 @@ const App = () => (
                   <Route path="/dashboard/admin/projects" element={<AdminProjectsPage />} />
                   <Route path="/dashboard/admin/clients" element={<AdminClientsPage />} />
                   <Route path="/dashboard/admin/conversations" element={<AdminConversationsPage />} />
-                  <Route path="/dashboard/admin/reports" element={<AdminReportsPage />} /> {/* Rota de Relatórios */}
+                  <Route path="/dashboard/admin/reports" element={<AdminReportsPage />} />
                   <Route path="/dashboard/admin/renus-config" element={<RenusConfigPage />} />
                 </Route>
 
@@ -74,7 +75,7 @@ const App = () => (
 
                 {/* Common Protected Routes */}
                 <Route element={<ProtectedRoute allowedRoles={['admin', 'client']} />}>
-                  <Route path="/dashboard/settings" element={<AdminOverview />} /> {/* Using AdminOverview as generic placeholder */}
+                  <Route path="/dashboard/settings" element={<AdminSettingsPage />} /> {/* Rota de Configurações */}
                 </Route>
 
                 {/* Catch-all Route */}
