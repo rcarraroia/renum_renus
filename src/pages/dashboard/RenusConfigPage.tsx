@@ -10,7 +10,7 @@ import ToolsTab from '@/components/renus-config/ToolsTab';
 import IntegrationsTab from '@/components/renus-config/IntegrationsTab';
 import KnowledgeTab from '@/components/renus-config/KnowledgeTab';
 import TriggersTab from '@/components/renus-config/TriggersTab';
-import GuardrailsTab from '@/components/renus-config/GuardrailsTab'; // Importando o novo componente
+import GuardrailsTab from '@/components/renus-config/GuardrailsTab'; // Importando o componente correto
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -121,7 +121,7 @@ const RenusConfigPage: React.FC = () => {
 
                 {tabs.map(tab => (
                     <TabsContent key={tab.value} value={tab.value} className="mt-6">
-                        <tab.component key={tab.value} />
+                        <tab.component />
                     </TabsContent>
                 ))}
             </Tabs>
