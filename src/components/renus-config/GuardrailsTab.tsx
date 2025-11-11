@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Zap, Shield, Lock, AlertTriangle, Save, TestTube, CheckCircle, XCircle, Settings, ChevronDown, ChevronUp, Mail, Phone, Landmark, MapPin, Tag, Trash2, Brain, Clock, RefreshCw } from 'lucide-react';
+import { Zap, Shield, Lock, AlertTriangle, Save, TestTube, CheckCircle, XCircle, Settings, ChevronDown, ChevronUp, Mail, Phone, Landmark, MapPin, Tag, Trash2, Brain, Clock, RefreshCw, Plus } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
