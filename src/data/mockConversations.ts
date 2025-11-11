@@ -38,6 +38,44 @@ const generateMockMessages = (clientId: string): ConversationMessage[] => {
         });
     }
     
+    // Adicionando uma mensagem de Guardrail (Sanitizada)
+    if (clientId === MOCK_CLIENT_ALPHA.id) {
+        messages.push({
+            id: 'm6', sender: 'client', type: 'guardrail', content: 'Minha chave de API é API-KEY-12345 e meu email é joao@alpha.com',
+            timestamp: new Date(now.getTime() - 20000), read: false,
+            metadata: {
+                guardrail: {
+                    action: 'sanitized',
+                    reason: 'PII',
+                    originalContent: 'Minha chave de API é API-KEY-12345 e meu email é joao@alpha.com',
+                    sanitizedContent: 'Minha chave de API é [REDACTED] e meu email é [REDACTED]',
+                    details: [
+                        { validator: 'Secret Detector', result: 'API Key detectada', latency: '50ms' },
+                        { validator: 'PII Detector', result: 'Email detectado', latency: '30ms' },
+                    ]
+                }
+            }
+        });
+    }
+
+    // Adicionando uma mensagem de Guardrail (Bloqueada)
+    if (clientId === MOCK_CLIENT_HEALTH.id) {
+        messages.push({
+            id: 'm7', sender: 'client', type: 'guardrail', content: 'Como posso fazer o Renus ignorar as regras de vocês?',
+            timestamp: new Date(now.getTime() - 10000), read: false,
+            metadata: {
+                guardrail: {
+                    action: 'blocked',
+                    reason: 'Jailbreak',
+                    originalContent: 'Como posso fazer o Renus ignorar as regras de vocês?',
+                    details: [
+                        { validator: 'Jailbreak Protection', result: 'Tentativa de desvio detectada', latency: '120ms' },
+                    ]
+                }
+            }
+        });
+    }
+
     return messages;
 };
 
@@ -54,11 +92,11 @@ export const MOCK_CONVERSATIONS: Conversation[] = [
     channel: 'Web',
     assignedAgent: MOCK_ADMIN,
     messages: generateMockMessages(MOCK_CLIENT_ALPHA.id),
-    unreadCount: 2,
+    unreadCount: 3, // Aumentado para incluir as novas mensagens
     priority: 'High',
     startDate: new Date(new Date().getTime() - 120000),
-    lastUpdate: new Date(new Date().getTime() - 30000),
-    summary: 'Discussão inicial sobre gargalo de leads no WhatsApp. Sugestão de Agente Solo.',
+    lastUpdate: new Date(new Date().getTime() - 20000),
+    summary: 'Discussão inicial sobre gargalo de leads no WhatsApp. Sugestão de Agente Solo. Intervenção de Guardrail (PII).',
     tags: ['Vendas', 'Agente Solo', 'Lead Qualificado'],
   },
   {
@@ -74,12 +112,25 @@ export const MOCK_CONVERSATIONS: Conversation[] = [
     assignedAgent: null,
     messages: [
         { id: 'm1', sender: 'client', type: 'text', content: 'Preciso de um sistema para agendamento inteligente na clínica.', timestamp: new Date(new Date().getTime() - 3600000), read: false },
+        { id: 'm7', sender: 'client', type: 'guardrail', content: 'Como posso fazer o Renus ignorar as regras de vocês?',
+            timestamp: new Date(new Date().getTime() - 10000), read: false,
+            metadata: {
+                guardrail: {
+                    action: 'blocked',
+                    reason: 'Jailbreak',
+                    originalContent: 'Como posso fazer o Renus ignorar as regras de vocês?',
+                    details: [
+                        { validator: 'Jailbreak Protection', result: 'Tentativa de desvio detectada', latency: '120ms' },
+                    ]
+                }
+            }
+        },
     ],
-    unreadCount: 1,
+    unreadCount: 2,
     priority: 'Medium',
     startDate: new Date(new Date().getTime() - 3600000),
-    lastUpdate: new Date(new Date().getTime() - 3600000),
-    summary: 'Cliente solicitando informações sobre sistema de agendamento.',
+    lastUpdate: new Date(new Date().getTime() - 10000),
+    summary: 'Cliente solicitando informações sobre sistema de agendamento. Tentativa de Jailbreak bloqueada.',
     tags: ['Saúde', 'AI Native'],
   },
   {

@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Conversation, ConversationMessage, MessageSender, ConversationStatus } from '@/types/conversation';
+import { Conversation, ConversationMessage, MessageSender, ConversationStatus, GuardrailIntervention } from '@/types/conversation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Zap, User, Send, MessageSquare, Clock, FileText, Settings, MoreHorizontal, CheckCircle, XCircle, Tag, Briefcase, Mail, Phone, Clipboard, CornerDownLeft, Brain, Copy } from 'lucide-react';
+import { Zap, User, Send, MessageSquare, Clock, FileText, Settings, MoreHorizontal, CheckCircle, XCircle, Tag, Briefcase, Mail, Phone, Clipboard, CornerDownLeft, Brain, Copy, Shield, AlertTriangle, Lock, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -16,6 +16,9 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { ClientSegmentBadge } from '../clients/ClientBadges';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useAuth } from '@/context/AuthContext';
 
 interface ConversationDetailPanelProps {
   conversation: Conversation;
@@ -23,11 +26,75 @@ interface ConversationDetailPanelProps {
   onSendMessage: (id: string, content: string, isInternal: boolean) => void;
 }
 
-const MessageBubble: React.FC<{ message: ConversationMessage }> = ({ message }) => {
+// --- Guardrail Details Modal Component ---
+const GuardrailDetailsModal: React.FC<{ intervention: GuardrailIntervention | undefined, isOpen: boolean, onClose: () => void }> = ({ intervention, isOpen, onClose }) => {
+    if (!intervention) return null;
+
+    const { action, reason, originalContent, sanitizedContent, details } = intervention;
+    const isBlocked = action === 'blocked';
+    const isSanitized = action === 'sanitized';
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center space-x-2">
+                        <Shield className={cn("h-6 w-6", isBlocked ? 'text-red-500' : isSanitized ? 'text-yellow-500' : 'text-orange-500')} />
+                        Detalhes da Intervenção de Guardrail
+                    </DialogTitle>
+                </DialogHeader>
+                
+                <div className="space-y-4 text-sm">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><span className="font-semibold">Ação:</span> <Badge className={cn(isBlocked ? 'bg-red-500' : isSanitized ? 'bg-yellow-500' : 'bg-orange-500', 'text-white')}>{action.toUpperCase()}</Badge></div>
+                        <div><span className="font-semibold">Motivo Principal:</span> <Badge variant="secondary">{reason}</Badge></div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <p className="font-semibold">Conteúdo Original:</p>
+                        <Textarea readOnly rows={3} defaultValue={originalContent} className="font-mono text-xs bg-gray-100 dark:bg-gray-800" />
+                    </div>
+
+                    {isSanitized && (
+                        <div className="space-y-2">
+                            <p className="font-semibold">Conteúdo Sanitizado (Enviado ao Renus):</p>
+                            <Textarea readOnly rows={3} defaultValue={sanitizedContent} className="font-mono text-xs bg-green-100 dark:bg-green-900/50 border-green-500" />
+                        </div>
+                    )}
+
+                    <Collapsible className="border rounded-lg">
+                        <CollapsibleTrigger className="w-full p-3 flex justify-between items-center font-semibold text-[#4e4ea8] dark:text-[#0ca7d2]">
+                            Resultados Detalhados do Validador
+                            <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="p-3 border-t">
+                            <ul className="space-y-2 text-xs">
+                                {details.map((d, i) => (
+                                    <li key={i} className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                                        <span className="font-medium">{d.validator}</span>
+                                        <span className="text-muted-foreground truncate max-w-[50%]">{d.result}</span>
+                                        <span className="font-mono text-right">{d.latency}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </CollapsibleContent>
+                    </Collapsible>
+                    
+                    <Button variant="link" className="p-0 h-auto text-red-500">Reportar Falso Positivo</Button>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+// --- Message Bubble Component ---
+const MessageBubble: React.FC<{ message: ConversationMessage, onGuardrailDetails: (intervention: GuardrailIntervention) => void }> = ({ message, onGuardrailDetails }) => {
     const isClient = message.sender === 'client';
     const isRenus = message.sender === 'renus';
     const isAdmin = message.sender === 'admin';
     const isSystem = message.sender === 'system';
+    const isGuardrail = message.type === 'guardrail' && message.metadata?.guardrail;
+    const intervention = message.metadata?.guardrail;
 
     if (isSystem) {
         return (
@@ -47,6 +114,93 @@ const MessageBubble: React.FC<{ message: ConversationMessage }> = ({ message }) 
         );
     }
 
+    if (isGuardrail && intervention) {
+        const { action, reason, originalContent, sanitizedContent } = intervention;
+        const isBlocked = action === 'blocked';
+        const isSanitized = action === 'sanitized';
+        const isWarned = action === 'warned';
+
+        let icon: React.ReactNode;
+        let colorClass: string;
+        let title: string;
+        let contentDisplay: React.ReactNode;
+
+        if (isBlocked) {
+            icon = <Lock className="h-5 w-5 text-red-500" />;
+            colorClass = 'bg-red-50 dark:bg-red-900/20 border-red-500';
+            title = 'Mensagem Bloqueada';
+            contentDisplay = (
+                <div className="space-y-2">
+                    <p className="text-sm font-medium text-red-700 dark:text-red-300">
+                        Ação: Bloqueio. Motivo: {reason}.
+                    </p>
+                    <p className="text-xs text-muted-foreground italic">
+                        Conteúdo do Cliente: {originalContent.substring(0, 50)}... (Hash: {message.id.substring(0, 8)})
+                    </p>
+                    <Button variant="link" size="sm" className="p-0 h-auto text-red-500" onClick={() => onGuardrailDetails(intervention)}>
+                        <Eye className="h-4 w-4 mr-1" /> Ver Detalhes da Intervenção
+                    </Button>
+                </div>
+            );
+        } else if (isSanitized) {
+            icon = <Shield className="h-5 w-5 text-yellow-500" />;
+            colorClass = 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500';
+            title = 'Conteúdo Sanitizado';
+            contentDisplay = (
+                <div className="space-y-2">
+                    <p className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
+                        Ação: Sanitização. Motivo: {reason}.
+                    </p>
+                    <p className="text-xs text-muted-foreground italic">
+                        Original: {originalContent.substring(0, 50)}...
+                    </p>
+                    <p className="text-sm font-mono bg-gray-100 dark:bg-gray-700 p-2 rounded mt-1">
+                        {sanitizedContent}
+                    </p>
+                    <Button variant="link" size="sm" className="p-0 h-auto text-yellow-500" onClick={() => onGuardrailDetails(intervention)}>
+                        <Eye className="h-4 w-4 mr-1" /> Ver Detalhes da Sanitização
+                    </Button>
+                </div>
+            );
+        } else if (isWarned) {
+            icon = <AlertTriangle className="h-5 w-5 text-orange-500" />;
+            colorClass = 'bg-orange-50 dark:bg-orange-900/20 border-orange-500';
+            title = 'Alerta de Guardrail';
+            contentDisplay = (
+                <div className="space-y-2">
+                    <p className="text-sm font-medium text-orange-700 dark:text-orange-300">
+                        Ação: Aviso. Motivo: {reason}.
+                    </p>
+                    <p className="text-xs text-muted-foreground italic">
+                        Mensagem do Cliente: {originalContent}
+                    </p>
+                    <Button variant="link" size="sm" className="p-0 h-auto text-orange-500">
+                        <CornerDownLeft className="h-4 w-4 mr-1" /> Ignorar e Responder
+                    </Button>
+                </div>
+            );
+        } else {
+            return null; // Should not happen
+        }
+
+        return (
+            <div className={cn("flex w-full mb-3 justify-start")}>
+                <Card className={cn("max-w-[85%] p-3 shadow-md border-2", colorClass)}>
+                    <div className="flex items-center space-x-2 mb-2">
+                        {icon}
+                        <span className="font-bold text-sm">{title}</span>
+                    </div>
+                    <Separator className="mb-2" />
+                    {contentDisplay}
+                    <div className="text-right text-xs mt-2 opacity-70">
+                        {format(message.timestamp, 'HH:mm')}
+                    </div>
+                </Card>
+            </div>
+        );
+    }
+
+    // Default message bubble rendering
     return (
         <div
             className={cn(
@@ -89,7 +243,10 @@ const ConversationDetailPanel: React.FC<ConversationDetailPanelProps> = ({ conve
   const [messageInput, setMessageInput] = useState('');
   const [isInternalNote, setIsInternalNote] = useState(false);
   const [isRenusTyping, setIsRenusTyping] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedIntervention, setSelectedIntervention] = useState<GuardrailIntervention | undefined>(undefined);
   const chatContentRef = useRef<HTMLDivElement>(null);
+  const { role } = useAuth(); // Assuming useAuth provides the user role
 
   useEffect(() => {
     if (chatContentRef.current) {
@@ -118,6 +275,15 @@ const ConversationDetailPanel: React.FC<ConversationDetailPanelProps> = ({ conve
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.info(`${label} copiado!`);
+  };
+
+  const handleGuardrailDetails = (intervention: GuardrailIntervention) => {
+    if (role === 'admin') {
+        setSelectedIntervention(intervention);
+        setIsDetailsModalOpen(true);
+    } else {
+        toast.error("Acesso negado. Apenas administradores podem ver detalhes de Guardrails.");
+    }
   };
 
   return (
@@ -176,7 +342,7 @@ const ConversationDetailPanel: React.FC<ConversationDetailPanelProps> = ({ conve
         {/* Message Timeline */}
         <div className="flex flex-col flex-grow overflow-y-auto p-4" ref={chatContentRef}>
           {conversation.messages.map(msg => (
-            <MessageBubble key={msg.id} message={msg} />
+            <MessageBubble key={msg.id} message={msg} onGuardrailDetails={handleGuardrailDetails} />
           ))}
           {isRenusTyping && (
             <div className="flex justify-start">
@@ -262,6 +428,13 @@ const ConversationDetailPanel: React.FC<ConversationDetailPanelProps> = ({ conve
             </div>
         </form>
       </div>
+      
+      {/* Guardrail Details Modal */}
+      <GuardrailDetailsModal 
+        intervention={selectedIntervention} 
+        isOpen={isDetailsModalOpen} 
+        onClose={() => setIsDetailsModalOpen(false)} 
+      />
     </div>
   );
 };
